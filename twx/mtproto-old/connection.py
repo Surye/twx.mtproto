@@ -1,4 +1,3 @@
-import os
 import struct
 import asyncio
 import logging
@@ -10,7 +9,7 @@ from io import BytesIO
 import time
 
 try:
-    from .util import crc32, to_hex
+    from . util import crc32, to_hex
     from . import tl
     from . import scheme
 except SystemError:
@@ -18,10 +17,11 @@ except SystemError:
     import tl
     import scheme
 
+
 log = logging.getLogger(__name__)
 
 
-class MTProtoConnection():
+class MTProtoConnection:
     class ConnectionType(str, Enum):
         TCP = 'TCP'
         HTTP = 'HTTP'
@@ -29,22 +29,23 @@ class MTProtoConnection():
     TCP = ConnectionType.TCP
     HTTP = ConnectionType.HTTP
 
-    def __init__(self):
-        if type(self) is MTProtoConnection:
-            raise SyntaxError('MTProtoConnection cannot be instantiated directly')
+    def __new__(cls, *args, **kwargs):
+        if cls is MTProtoConnection:
+            raise SyntaxError('do not call this directly')
+        else:
+            return object.__new__(cls, *args, **kwargs)
 
+    def __init__(self):
         self.seq_no = 0
         self.transport = None
         self.received_messages = dict()
 
     @classmethod
-    def new(cls, connection_type, address, port):
+    def new(cls, connection_type):
         if cls is MTProtoConnection:
             connection_type = cls.ConnectionType(connection_type)
             if connection_type is cls.ConnectionType.TCP:
-                return MTProtoTCPConnection(address, port)
-            elif connection_type is cls.ConnectionType.HTTP:
-                return MTProtoHTTPConnection(address, port)
+                return MTProtoTCPConnection()
             else:
                 raise TypeError()
         else:
@@ -75,12 +76,9 @@ class MTProtoConnection():
         self.send_message(msg)
 
 
-class MTProtoHTTPConnection(MTProtoConnection):
-    def __init__(self, address, port):
-        raise NotImplementedError('HTTP Connection type not implemented')
-
 
 class MTProtoTCPMessage(namedtuple('MTProtoTCPMessage', 'data')):
+
     def __init__(self):
         pass
 
@@ -94,7 +92,7 @@ class MTProtoTCPMessage(namedtuple('MTProtoTCPMessage', 'data')):
             scheme.int32_c(len(payload) + 12).get_bytes(),
             scheme.int32_c(seq_no).get_bytes(),
             payload
-        ])
+            ])
 
         crc = scheme.int32_c(crc32(header_and_payload)).get_bytes()
 
@@ -110,7 +108,7 @@ class MTProtoTCPMessage(namedtuple('MTProtoTCPMessage', 'data')):
     @classmethod
     def from_bytes(cls, data):
         length = int.from_bytes(data[0:4], 'little')
-        return cls(data[:length + 4])
+        return cls(data[:length+4])
 
     @property
     def length(self):
@@ -147,8 +145,8 @@ class MTProtoMessage:
         return self.auth_key_id != 0
 
 
-class MTProtoEncryptedMessage(
-    namedtuple('MTProtoEncryptedMessage', 'auth_key_id, msg_key, encrypted_data'), MTProtoMessage):
+class MTProtoEncryptedMessage(namedtuple('MTProtoEncryptedMessage', 'auth_key_id msg_key encrypted_data'), MTProtoMessage):
+
     """
     Encrypted Message:
         auth_key_id:int64 | msg_key:int128 | encrypted_data:bytes
@@ -157,12 +155,13 @@ class MTProtoEncryptedMessage(
     """
 
     class EncryptedData(
-        namedtuple('EncryptedData', 'salt, session_id, message_id, seq_no, message_data_length, message_data')):
+                namedtuple('EncryptedData', 'salt, session_id, message_id, seq_no, message_data_length, message_data')):
+
         def __init__(self):
             pass
 
         _header_struct = struct.Struct('<QQQII')
-
+    
         @classmethod
         def new(cls, salt, session_id, message_id, seq_no, message_data):
             return cls(salt, session_id, message_id, seq_no, len(message_data), message_data)
@@ -171,19 +170,18 @@ class MTProtoEncryptedMessage(
             return os.urandom((16 - (32 + len(self.message_data)) % 16) % 16)
 
         def to_bytes(self):
-            return self._header_struct.pack(self.salt, self.session_id,
-                                            self.message_id, self.seq_no,
-                                            self.message_data_length) + self.message_data
+            return self._header_struct.pack(self.salt, self.session_id, self.message_id, self.seq_no, self.message_data_length) + self.message_data
 
         @classmethod
         def from_bytes(cls, data):
             parts = list(cls._header_struct.unpack(data[0:32]))
             message_data_length = parts[-1]
-            parts.append(data[32:32 + message_data_length])
+            parts.append(data[32:32+message_data_length])
             return cls(*parts)
 
     @classmethod
     def new(cls, salt, session_id, message_id, seq_no, message_data):
+
         encrypted_data = cls.EncryptedData.new(salt, session_id, message_id, seq_no, message_data)
         return cls(None, None, encrypted_data)
 
@@ -208,15 +206,14 @@ class MTProtoEncryptedMessage(
     def to_bytes(self):
         return b''.join((self.auth_key_id, self.msg_key, self.encrypted_data,))
 
-
 class EmptyValue:
+
     def __new__(cls):
         raise SyntaxError()
 
-
 class MTProtoUnencryptedMessage(MTProtoMessage,
-                                namedtuple('MTProtoUnencryptedMessage',
-                                           'auth_key_id, message_id, message_data_length, message_data')):
+    namedtuple('MTProtoUnencryptedMessage', 'auth_key_id, message_id, message_data_length, message_data')):
+
     """
     Unencrypted Message:
         auth_key_id = 0:int64   message_id:int64   message_data_length:int32   message_data:bytes
@@ -249,10 +246,9 @@ class MTProtoUnencryptedMessage(MTProtoMessage,
         auth_key_id, message_id, message_data_length = cls._header_struct.unpack(data[0:20])
         return cls(auth_key_id, message_id, message_data_length, data[20:])
 
+class TCPConnection:
 
-class MTProtoTCPConnection(MTProtoConnection):
     def __init__(self, host, port):
-        super().__init__()
         self.queue = None
         self.host = host
         self.port = port
@@ -275,7 +271,7 @@ class MTProtoTCPConnection(MTProtoConnection):
 
             rec_data_length_bytes = yield from reader.read(4)
             rcv_data_length = int.from_bytes(rec_data_length_bytes, 'little')
-
+            
             rcv_data = yield from reader.read(rcv_data_length - 4)
             rcv_msg = MTProtoTCPMessage.from_bytes(rec_data_length_bytes + rcv_data)
             print(rcv_msg)
@@ -283,7 +279,7 @@ class MTProtoTCPConnection(MTProtoConnection):
             yield from asyncio.sleep(1)
 
     @asyncio.coroutine
-    def debug(self):
+    def debug(self, loop):
         while True:
             print(self.queue.qsize())
             yield from asyncio.sleep(1)
@@ -292,3 +288,14 @@ class MTProtoTCPConnection(MTProtoConnection):
     def send_insecure_message(self, message_id, obj):
         mtproto_msg = MTProtoUnencryptedMessage.new(message_id, obj)
         yield from self.queue.put(mtproto_msg)
+
+
+if __name__ == '__main__':
+    con = TCPConnection('127.0.0.1', 8888)
+
+    loop = asyncio.get_event_loop()
+    asyncio.async(con.run(loop))
+    asyncio.async(con.debug(loop))
+
+    loop.run_forever()
+    loop.close()

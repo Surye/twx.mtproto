@@ -37,6 +37,7 @@ from twx.mtproto import mtproto
 from twx.mtproto.tl import *
 from twx.mtproto.util import to_hex
 
+
 class Colors(int, Enum):
     DEFAULT = 1
     STDOUT = 2
@@ -46,6 +47,7 @@ class Colors(int, Enum):
     ERROR = 6
     CRITICAL = 7
     DEBUG = 8
+
 
 def save_stdio_state(func):
     sys_stdout = sys.stdout
@@ -61,10 +63,12 @@ def save_stdio_state(func):
 
     return wrapper
 
+
 @save_stdio_state
 def set_stdio(stdout, stderr):
     sys.stdout = stdout
     sys.stderr = stderr
+
 
 @atexit.register
 def reset_stdio():
@@ -95,6 +99,7 @@ class WindowLogHandler(logging.Handler):
         finally:
             self.release()
 
+
 class StdioWrapper:
 
     def __init__(self, level):
@@ -114,6 +119,7 @@ class StdioWrapper:
 
     def flush(self):
         pass
+
 
 class Point2D(namedtuple('Point2D', 'x y')):
 
@@ -149,11 +155,13 @@ class Position(str, Enum):
     ABSOLUTE = 'absolute'
     RELATIVE = 'relative'
 
+
 class ReferenceBorder(str, Enum):
     TOP = 'top'
     BOTTOM = 'bottom'
     LEFT = 'left'
     RIGHT = 'right'
+
 
 class Window:
 
@@ -163,11 +171,14 @@ class Window:
         self.position = Position(position)
         self.ref = ReferenceBorder(ref)
 
+
 class CLICommandExit(Exception):
     pass
 
+
 class CLICommandError(Exception):
     pass
+
 
 class CLICommand:
 
@@ -318,6 +329,11 @@ class CursesCLI():
     @command('compare')
     def cmd_compare(self):
         self.client.compare()
+
+
+    @command('init')
+    def cmd_init(self):
+        self.client.init()
 
     @command('quit', aliases=['exit'], help='Quit the program')
     def cmd_quit(self):

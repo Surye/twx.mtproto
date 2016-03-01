@@ -34,7 +34,6 @@ from struct import Struct
 import asyncio
 
 class MTProto:
-
     def __init__(self, api_secret, api_id, rsa_key):
         self.api_secret = api_secret
         self.api_id = api_id
@@ -140,7 +139,7 @@ class Datacenter:
         res_pq = tl.ResPQ.from_stream(BytesIO(self.recv_plaintext_message()))
 
         # print(res_pq, ...)
-        raise Exception()
+        # raise Exception()
 
         assert nonce == res_pq.nonce
 
@@ -556,7 +555,6 @@ class MTProtoTCPMessage(namedtuple('MTProtoTCPMessage', 'data')):
 
 
 class MTProtoClient:
-
     def __init__(self, config, session_id=None):
 
         self.api_id = config.get('app', 'api_id')
@@ -567,12 +565,12 @@ class MTProtoClient:
         self.public_keys = config.get('servers', 'public_keys')
 
         self.test_dc = dc.DataCenter(config.get('servers', 'test_dc'))
-        self.productinon_dc = dc.DataCenter(config.get('servers', 'production_dc'))
+        self.production_dc = dc.DataCenter(config.get('servers', 'production_dc'))
 
         # if self.use_test_dc:
         self.datacenter = self.test_dc
         # else:
-        #     self.datacenter = self.productinon_dc
+        #     self.datacenter = self.productinn_dc
 
         # self.datacenter = dc.DataCenter('tcp://127.0.0.1:8888')
 
@@ -592,10 +590,8 @@ class MTProtoClient:
     def compare(self):
         MTProto('FFFFFFFFF', 'EEEEEEEE', self.public_keys)
 
-    def init(self, loop):
-        # MTProto('FFFFFFFFF', 'EEEEEEEE', self.public_keys)
-        asyncio.async(self.run(loop))
-        self.datacenter.init(loop)
+    def init(self):
+        MTProto(self.api_id, self.api_hash, self.public_keys)
 
     # def add_to_run_loop(self, loop):
     #     from . connection import MTProtoConnection
