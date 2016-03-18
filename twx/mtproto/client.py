@@ -30,11 +30,14 @@ class MTProtoClient:
             print('continuing session: {}'.format(self.session))
 
     @asyncio.coroutine
-    def run(self, loop):
+    def run(self):
+        print("Test")
         while True:
             # self.get_nearest_dc()
             print("Test")
             yield from asyncio.sleep(1)
 
     def init(self):
-        asyncio.ensure_future(self.run(asyncio.get_event_loop()))
+        print("Test1")
+        tmp = asyncio.async(self.run())
+        print("Test2")
